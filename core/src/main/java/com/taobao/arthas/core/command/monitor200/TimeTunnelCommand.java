@@ -59,7 +59,6 @@ public class TimeTunnelCommand extends EnhancerCommand {
     private static final AtomicInteger sequence = new AtomicInteger(1000);
     // TimeTunnel the method call
     private boolean isTimeTunnel = false;
-    private boolean isAsync = false;
     private String classPattern;
     private String methodPattern;
     private String conditionExpress;
@@ -176,12 +175,6 @@ public class TimeTunnelCommand extends EnhancerCommand {
         this.numberOfLimit = numberOfLimit;
     }
 
-    @Option(shortName = "a", longName = "async", flag = true)
-    @Description("watch async call")
-    public void setAsync(boolean async) {
-        isAsync = async;
-    }
-
     @Option(longName = "replay-times")
     @Description("execution times when play tt")
     public void setReplayTimes(int replayTimes) {
@@ -234,10 +227,6 @@ public class TimeTunnelCommand extends EnhancerCommand {
 
     private boolean isNeedExpand() {
         return null != expand && expand > 0;
-    }
-
-    public boolean isAsync() {
-        return isAsync;
     }
 
     /**
@@ -490,7 +479,7 @@ public class TimeTunnelCommand extends EnhancerCommand {
 
                 try {
                     Object returnObj = method.invoke(advice.getTarget(), advice.getParams());
-                    if (returnObj instanceof CompletableFuture && isAsync()) {
+                    if (returnObj instanceof CompletableFuture) {
                         CompletableFuture<?> returnFuture = (CompletableFuture<?>) returnObj;
                         returnFuture.whenComplete((returnValue, e) -> {
                             if (returnValue != null) {

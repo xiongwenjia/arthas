@@ -56,7 +56,7 @@ public class GlobalOptions {
             summary = "Option to support JSON format of object output",
             description = "This option enables to format object output with JSON when -x option selected."
     )
-    public static volatile boolean isUsingJson = false;
+    public static volatile boolean isUsingJson = true;
 
     /**
      * 是否关闭子类
