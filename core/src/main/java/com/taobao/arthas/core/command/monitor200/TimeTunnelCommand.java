@@ -27,6 +27,7 @@ import com.taobao.text.util.RenderUtil;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static java.lang.Integer.toHexString;
@@ -58,6 +59,7 @@ public class TimeTunnelCommand extends EnhancerCommand {
     private static final AtomicInteger sequence = new AtomicInteger(1000);
     // TimeTunnel the method call
     private boolean isTimeTunnel = false;
+    private boolean isAsync = false;
     private String classPattern;
     private String methodPattern;
     private String conditionExpress;
@@ -174,6 +176,11 @@ public class TimeTunnelCommand extends EnhancerCommand {
         this.numberOfLimit = numberOfLimit;
     }
 
+    @Option(shortName = "a", longName = "async", flag = true)
+    @Description("watch async call")
+    public void setAsync(boolean async) {
+        isAsync = async;
+    }
 
     @Option(longName = "replay-times")
     @Description("execution times when play tt")
@@ -227,6 +234,10 @@ public class TimeTunnelCommand extends EnhancerCommand {
 
     private boolean isNeedExpand() {
         return null != expand && expand > 0;
+    }
+
+    public boolean isAsync() {
+        return isAsync;
     }
 
     /**
@@ -479,8 +490,20 @@ public class TimeTunnelCommand extends EnhancerCommand {
 
                 try {
                     Object returnObj = method.invoke(advice.getTarget(), advice.getParams());
-                    double cost = (System.nanoTime() - beginTime) / 1000000.0;
-                    TimeTunnelTable.drawPlayResult(table, returnObj, isNeedExpand(), expand, sizeLimit, cost);
+                    if (returnObj instanceof CompletableFuture && isAsync()) {
+                        CompletableFuture<?> returnFuture = (CompletableFuture<?>) returnObj;
+                        returnFuture.whenComplete((returnValue, e) -> {
+                            if (returnValue != null) {
+                                double cost = (System.nanoTime() - beginTime) / 1000000.0;
+                                TimeTunnelTable.drawPlayResult(table, returnObj, isNeedExpand(), expand, sizeLimit, cost);
+                            } else {
+                                TimeTunnelTable.drawPlayException(table, e, isNeedExpand(), expand);
+                            }
+                        });
+                    } else {
+                        double cost = (System.nanoTime() - beginTime) / 1000000.0;
+                        TimeTunnelTable.drawPlayResult(table, returnObj, isNeedExpand(), expand, sizeLimit, cost);
+                    }
                 } catch (Throwable t) {
                     TimeTunnelTable.drawPlayException(table, t, isNeedExpand(), expand);
                 }
